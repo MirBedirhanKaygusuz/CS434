@@ -1,35 +1,114 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect, useRef } from 'react';
+import './App.css';
+import Header from './components/Header';
+import Editor from './components/Editor';
+import Toolbar from './components/Toolbar';
+import StatusBar from './components/StatusBar';
+import SaveAs from './components/SaveAs';
+import RestorePoints from './components/RestorePoints';
+import AppLayout from './components/AppLayout';
+import { createSnapshot } from './services/fileService';
+import { createNewFile } from './services/fileService';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [content, setContent] = useState('');
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionStart, setSelectionStart] = useState(0);
+  const [selectionEnd, setSelectionEnd] = useState(0);
+  const [isSaveAsOpen, setIsSaveAsOpen] = useState(false);
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const autoSaveIntervalRef = useRef<number | null>(null);
+
+  // Auto-save functionality - every 30 seconds
+  useEffect(() => {
+    autoSaveIntervalRef.current = window.setInterval(async () => {
+      if (content.trim()) {
+        try {
+          await createSnapshot(content);
+          console.log('Auto-save completed');
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+        }
+      }
+    }, 30000); // 30 seconds
+
+    return () => {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+    };
+  }, [content]);
+
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+  };
+
+  const handleSelectionChange = (start: number, end: number, text: string) => {
+    setSelectionStart(start);
+    setSelectionEnd(end);
+    setSelectedText(text);
+  };
+
+  const handleFormat = (formattedText: string) => {
+    // Replace selected text with formatted text
+    const before = content.substring(0, selectionStart);
+    const after = content.substring(selectionEnd);
+    const newContent = before + formattedText + after;
+    setContent(newContent);
+  };
+
+  const handleNewFile = async () => {
+    if (content && !window.confirm('Create new file? Current content will be lost.')) {
+      return;
+    }
+    
+    try {
+      const response = await createNewFile('text');
+      if (response.success) {
+        setContent('');
+      }
+    } catch (error) {
+      console.error('Error creating new file:', error);
+    }
+  };
+
+  const handleRestore = (restoredContent: string) => {
+    setContent(restoredContent);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <AppLayout>
+      <div className="smart-edit">
+        <Header
+          onNew={handleNewFile}
+          onSave={() => setIsSaveAsOpen(true)}
+          onRestore={() => setIsRestoreOpen(true)}
+        />
+        <Toolbar
+          selectedText={selectedText}
+          onFormat={handleFormat}
+          onSave={() => setIsSaveAsOpen(true)}
+          onRestore={() => setIsRestoreOpen(true)}
+        />
+        <Editor
+          content={content}
+          onChange={handleContentChange}
+          onSelectionChange={handleSelectionChange}
+        />
+        <StatusBar content={content} />
+        <SaveAs
+          isOpen={isSaveAsOpen}
+          onClose={() => setIsSaveAsOpen(false)}
+          content={content}
+        />
+        <RestorePoints
+          isOpen={isRestoreOpen}
+          onClose={() => setIsRestoreOpen(false)}
+          onRestore={handleRestore}
+        />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </AppLayout>
+  );
 }
 
-export default App
+export default App;
