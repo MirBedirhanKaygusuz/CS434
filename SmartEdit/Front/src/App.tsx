@@ -21,7 +21,7 @@ function App() {
 
   // Auto-save functionality - every 30 seconds
   useEffect(() => {
-    autoSaveIntervalRef.current = window.setInterval(async () => {
+    const handleAutoSave = async () => {
       if (content.trim()) {
         try {
           await createSnapshot(content);
@@ -30,13 +30,30 @@ function App() {
           console.error('Auto-save failed:', error);
         }
       }
-    }, 30000); // 30 seconds
+    };
+
+    autoSaveIntervalRef.current = window.setInterval(handleAutoSave, 30000); // 30 seconds
 
     return () => {
       if (autoSaveIntervalRef.current) {
         clearInterval(autoSaveIntervalRef.current);
       }
     };
+  }, []); // Only create interval once
+
+  // Trigger manual save when content changes significantly
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (content.trim()) {
+        try {
+          await createSnapshot(content);
+        } catch (error) {
+          console.error('Manual save failed:', error);
+        }
+      }
+    }, 5000); // Save after 5 seconds of no typing
+
+    return () => clearTimeout(timer);
   }, [content]);
 
   const handleContentChange = (newContent: string) => {

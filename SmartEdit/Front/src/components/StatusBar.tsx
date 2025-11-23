@@ -1,36 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 interface StatusBarProps {
   content: string;
 }
 
 const StatusBar: React.FC<StatusBarProps> = ({ content }) => {
-  const [wordCount, setWordCount] = useState(0);
-  const [charCount, setCharCount] = useState(0);
   const [lastSaved, setLastSaved] = useState<string>('');
 
-  useEffect(() => {
-    // Update character count
-    setCharCount(content.length);
-
-    // Update word count
+  // Memoize word and character count to avoid recalculating on every render
+  const charCount = useMemo(() => content.length, [content]);
+  
+  const wordCount = useMemo(() => {
     const words = content.trim().split(/\s+/).filter(word => word.length > 0);
-    setWordCount(words.length);
+    return words.length;
   }, [content]);
 
-  const updateLastSaved = () => {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-    setLastSaved(timeString);
-  };
-
-  // Expose updateLastSaved to parent via ref or callback
   useEffect(() => {
+    // Only update last saved timestamp when content actually changes
     if (content) {
-      updateLastSaved();
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      setLastSaved(timeString);
     }
   }, [content]);
 
