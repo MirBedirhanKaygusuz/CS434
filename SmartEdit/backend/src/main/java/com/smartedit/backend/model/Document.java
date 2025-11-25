@@ -1,5 +1,7 @@
 package com.smartedit.backend.model;
 
+import com.smartedit.backend.patterns.memento.DocumentMemento;
+
 public class Document {
     private String content;
     private int cursorPosition;
@@ -52,6 +54,20 @@ public class Document {
     public String getText(int start, int length) {
         if (start + length > content.length()) return "";
         return content.substring(start, start + length);
+    }
+
+    public DocumentMemento createMomento() {
+        return new DocumentMemento(
+            this.content,
+            this.cursorPosition,
+            this.fileName
+        );
+    }
+
+    public void restore(DocumentMemento memento) {
+        this.content = memento.getContent();
+        this.cursorPosition = memento.getCursorPosition();
+        this.fileName = memento.getFileName();
     }
     
 }
