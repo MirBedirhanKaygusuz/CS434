@@ -7,37 +7,31 @@ import com.smartedit.backend.patterns.command.CommandManager;
 import com.smartedit.backend.patterns.memento.MementoManager;
 import com.smartedit.backend.patterns.observer.AutoSaveObserver;
 import com.smartedit.backend.patterns.observer.StatusBarObserver;
+import com.smartedit.backend.patterns.singleton.EditorManager;
 
 @Service
 public class EditorService {
-    private Document currentDocument;
-    private CommandManager commandManager;
-    private MementoManager mementoManager;
-
     private StatusBarObserver statusBarObserver;
 
     public EditorService() {
-        this.currentDocument = new Document();
-        this.commandManager = new CommandManager();
-        this.mementoManager = new MementoManager();
-
+        EditorManager manager = EditorManager.getInstance();
         this.statusBarObserver = new StatusBarObserver();
-        AutoSaveObserver autoSaveObserver = new AutoSaveObserver(this.mementoManager);
+        AutoSaveObserver autoSaveObserver = new AutoSaveObserver(manager.getMementoManager());
 
-        this.currentDocument.attach(this.statusBarObserver);
-        this.currentDocument.attach(autoSaveObserver);
+        manager.getCurrentDocument().attach(this.statusBarObserver);
+        manager.getCurrentDocument().attach(autoSaveObserver);
     }
 
     public Document getCurrentDocument() {
-        return currentDocument;
+        return EditorManager.getInstance().getCurrentDocument();
     }
 
     public CommandManager getCommandManager() {
-        return commandManager;
+        return EditorManager.getInstance().getCommandManager();
     }
 
     public MementoManager getMementoManager() {
-        return mementoManager;
+        return EditorManager.getInstance().getMementoManager();
     }
 
     public StatusBarObserver getStatusBarObserver() {
