@@ -22,7 +22,7 @@ public class EditorService {
         this.mementoManager = new MementoManager();
 
         this.statusBarObserver = new StatusBarObserver();
-        AutoSaveObserver autoSaveObserver = new AutoSaveObserver();
+        AutoSaveObserver autoSaveObserver = new AutoSaveObserver(this.mementoManager);
 
         this.currentDocument.attach(this.statusBarObserver);
         this.currentDocument.attach(autoSaveObserver);
