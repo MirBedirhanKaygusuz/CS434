@@ -8,7 +8,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartedit.backend.patterns.command.Command;
+import com.smartedit.backend.patterns.command.DeleteTextCommand;
 import com.smartedit.backend.patterns.command.InsertTextCommand;
+import com.smartedit.backend.patterns.decorator.BoldDecorator;
+import com.smartedit.backend.patterns.decorator.ItalicDecorator;
+import com.smartedit.backend.patterns.decorator.PlainText;
+import com.smartedit.backend.patterns.decorator.TextComponent;
+import com.smartedit.backend.patterns.decorator.UnderlineDecorator;
 import com.smartedit.backend.service.EditorService;
 
 @RestController
@@ -51,6 +57,41 @@ public class EditorController {
     @PostMapping("/redo")
     public ResponseEntity<EditorResponse> redo() {
         editorService.getCommandManager().redo();
+
+        return ResponseEntity.ok(createResponse());
+    }
+
+    @PostMapping("/format")
+    public ResponseEntity<EditorResponse> formatText(@RequestBody FormatRequest request) {
+        TextComponent component = 
+            new PlainText(request.getSelection());
+
+        switch (request.getFormat().toLowerCase()) {
+            case "bold":
+                component = new BoldDecorator(component);
+                break;
+            case "italic":
+                component = new ItalicDecorator(component);
+                break;
+            case "underline":
+                component = new UnderlineDecorator(component);
+                break;
+        }
+
+        String formattedText = component.getText();
+
+        int length = request.getEnd() - request.getStart();
+        Command deleteCmd = 
+            new DeleteTextCommand(
+                editorService.getCurrentDocument(), request.getStart(), length
+            );
+        editorService.getCommandManager().executeCommand(deleteCmd);
+
+        Command insertCmd = 
+            new InsertTextCommand(
+                editorService.getCurrentDocument(), formattedText, request.getStart()
+            );
+        editorService.getCommandManager().executeCommand(insertCmd);
 
         return ResponseEntity.ok(createResponse());
     }
