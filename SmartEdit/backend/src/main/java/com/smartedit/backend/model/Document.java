@@ -1,6 +1,10 @@
 package com.smartedit.backend.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.smartedit.backend.patterns.memento.DocumentMemento;
+import com.smartedit.backend.patterns.observer.DocumentObserver;
 
 public class Document {
     private String content;
@@ -19,6 +23,7 @@ public class Document {
 
     public void setContent(String content) {
         this.content = content;
+        notifyObservers();
     }
 
     public int getCursorPosition() {
@@ -42,6 +47,7 @@ public class Document {
         if (position > sb.length()) position = sb.length();
         sb.insert(position, text);
         this.content = sb.toString();
+        notifyObservers();
     }
 
     public void delete(int position, int length) {
@@ -49,6 +55,7 @@ public class Document {
         if (position + length > sb.length()) return;
         sb.delete(position, position + length);
         this.content = sb.toString();
+        notifyObservers();
     }
 
     public String getText(int start, int length) {
@@ -68,6 +75,21 @@ public class Document {
         this.content = memento.getContent();
         this.cursorPosition = memento.getCursorPosition();
         this.fileName = memento.getFileName();
+    }    
+
+    private List<DocumentObserver> observers = new ArrayList<>();
+
+    public void attach(DocumentObserver observer) {
+        observers.add(observer);
     }
-    
+
+    public void detach(DocumentObserver observer) {
+        observers.remove(observer);
+    }
+
+    public void notifyObservers() {
+        for (DocumentObserver observer : observers) {
+            observer.update(this);
+        }
+    }
 }

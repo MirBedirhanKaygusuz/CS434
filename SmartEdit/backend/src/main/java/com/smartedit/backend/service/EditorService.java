@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import com.smartedit.backend.model.Document;
 import com.smartedit.backend.patterns.command.CommandManager;
 import com.smartedit.backend.patterns.memento.MementoManager;
+import com.smartedit.backend.patterns.observer.AutoSaveObserver;
+import com.smartedit.backend.patterns.observer.StatusBarObserver;
 
 @Service
 public class EditorService {
@@ -12,10 +14,18 @@ public class EditorService {
     private CommandManager commandManager;
     private MementoManager mementoManager;
 
+    private StatusBarObserver statusBarObserver;
+
     public EditorService() {
         this.currentDocument = new Document();
         this.commandManager = new CommandManager();
         this.mementoManager = new MementoManager();
+
+        this.statusBarObserver = new StatusBarObserver();
+        AutoSaveObserver autoSaveObserver = new AutoSaveObserver();
+
+        this.currentDocument.attach(this.statusBarObserver);
+        this.currentDocument.attach(autoSaveObserver);
     }
 
     public Document getCurrentDocument() {
@@ -28,5 +38,9 @@ public class EditorService {
 
     public MementoManager getMementoManager() {
         return mementoManager;
+    }
+
+    public StatusBarObserver getStatusBarObserver() {
+        return statusBarObserver;
     }
 }

@@ -17,6 +17,15 @@ import com.smartedit.backend.service.EditorService;
 public class EditorController {
     private final EditorService editorService;
 
+    private EditorResponse createResponse() {
+        return new EditorResponse(
+            editorService.getCurrentDocument().getContent(),
+            true,
+            editorService.getStatusBarObserver().getWordCount(),
+            editorService.getStatusBarObserver().getCharCount()
+        );
+    }
+
     public EditorController(EditorService editorService) {
         this.editorService = editorService;
     }
@@ -29,23 +38,20 @@ public class EditorController {
 
         editorService.getCommandManager().executeCommand(command);
 
-        return ResponseEntity.ok(new EditorResponse(
-            editorService.getCurrentDocument().getContent(), true
-        ));
+        return ResponseEntity.ok(createResponse());
     }
 
     @PostMapping("/undo")
     public ResponseEntity<EditorResponse> undo() {
         editorService.getCommandManager().undo();
 
-        return ResponseEntity.ok(new EditorResponse(editorService.getCurrentDocument().getContent(), true));
+        return ResponseEntity.ok(createResponse());
     }
 
     @PostMapping("/redo")
     public ResponseEntity<EditorResponse> redo() {
         editorService.getCommandManager().redo();
 
-        return ResponseEntity.ok(new EditorResponse(
-            editorService.getCurrentDocument().getContent(), true));
+        return ResponseEntity.ok(createResponse());
     }
 }
