@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartedit.backend.patterns.command.Command;
-import com.smartedit.backend.patterns.command.DeleteTextCommand;
 import com.smartedit.backend.patterns.command.InsertTextCommand;
+import com.smartedit.backend.patterns.command.ReplaceTextCommand;
 import com.smartedit.backend.patterns.decorator.BoldDecorator;
 import com.smartedit.backend.patterns.decorator.ItalicDecorator;
 import com.smartedit.backend.patterns.decorator.PlainText;
@@ -81,17 +81,13 @@ public class EditorController {
         String formattedText = component.getText();
 
         int length = request.getEnd() - request.getStart();
-        Command deleteCmd = 
-            new DeleteTextCommand(
-                editorService.getCurrentDocument(), request.getStart(), length
-            );
-        editorService.getCommandManager().executeCommand(deleteCmd);
-
-        Command insertCmd = 
-            new InsertTextCommand(
-                editorService.getCurrentDocument(), formattedText, request.getStart()
-            );
-        editorService.getCommandManager().executeCommand(insertCmd);
+        Command replaceCmd = new ReplaceTextCommand(
+            editorService.getCurrentDocument(),
+            request.getStart(),
+            length,
+            formattedText
+        );
+        editorService.getCommandManager().executeCommand(replaceCmd);
 
         return ResponseEntity.ok(createResponse());
     }
