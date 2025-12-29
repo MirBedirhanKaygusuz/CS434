@@ -1,12 +1,14 @@
 package com.smartedit.backend.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import com.smartedit.backend.patterns.composite.FileSystemItem;
 import com.smartedit.backend.patterns.memento.DocumentMemento;
 import com.smartedit.backend.patterns.observer.DocumentObserver;
 
-public class Document {
+public class Document implements FileSystemItem {
     private String content;
     private int cursorPosition;
     private String fileName;
@@ -76,6 +78,31 @@ public class Document {
         this.cursorPosition = memento.getCursorPosition();
         this.fileName = memento.getFileName();
     }    
+
+    @Override
+    public String getName() {
+        return fileName;
+    }
+
+    @Override
+    public boolean isDirectory() {
+        return false;
+    }
+
+    @Override
+    public void add(FileSystemItem item) {
+        throw new UnsupportedOperationException("Cannot add item to a file.");
+    }
+
+    @Override
+    public void remove(FileSystemItem item) {
+        throw new UnsupportedOperationException("Cannot remove item from a file.");
+    }
+
+    @Override
+    public List<FileSystemItem> getChildren() {
+        return Collections.emptyList();
+    }
 
     private List<DocumentObserver> observers = new ArrayList<>();
 

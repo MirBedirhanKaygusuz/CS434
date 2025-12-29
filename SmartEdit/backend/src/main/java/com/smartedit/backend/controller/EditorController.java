@@ -38,6 +38,7 @@ public class EditorController {
 
     @PostMapping("/insert")
     public ResponseEntity<EditorResponse> insertText(@RequestBody InsertRequest request) {
+
         Command command = new InsertTextCommand(
             editorService.getCurrentDocument(), request.getText(), request.getPosition()
         );
