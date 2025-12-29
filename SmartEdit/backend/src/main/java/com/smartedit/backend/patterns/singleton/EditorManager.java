@@ -3,6 +3,7 @@ package com.smartedit.backend.patterns.singleton;
 import com.smartedit.backend.model.Document;
 import com.smartedit.backend.patterns.command.CommandManager;
 import com.smartedit.backend.patterns.composite.Directory;
+import com.smartedit.backend.patterns.composite.FileSystemItem;
 import com.smartedit.backend.patterns.memento.MementoManager;
 
 public class EditorManager {
@@ -45,6 +46,28 @@ public class EditorManager {
 
     public void setCurrentDocument(Document document) {
         this.currentDocument = document;
-        this.rootDirectory.add(document);
+    }
+
+    public Directory findDirectory(String name) {
+        if (name == null || name.isEmpty() || name.equals("Root")) {
+            return rootDirectory;
+        }
+        return searchDirectory(rootDirectory, name);
+    }
+
+    private Directory searchDirectory(Directory current, String name) {
+        
+        if (current.getName().equals(name)) {
+            return current;
+        }
+
+        for (FileSystemItem item : current.getChildren()) {
+            if (item.isDirectory()) {
+                Directory found = 
+                    searchDirectory((Directory) item, name);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 }

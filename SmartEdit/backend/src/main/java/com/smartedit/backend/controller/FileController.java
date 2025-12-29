@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartedit.backend.model.Document;
+import com.smartedit.backend.patterns.composite.Directory;
 import com.smartedit.backend.patterns.factory.DocumentFactory;
 import com.smartedit.backend.patterns.factory.HTMLDocumentFactory;
 import com.smartedit.backend.patterns.factory.MarkdownDocumentFactory;
@@ -48,9 +49,20 @@ public class FileController {
         
         Document newDoc = factory.createDocument(request.getFileName());
         
-        EditorManager.getInstance().setCurrentDocument(newDoc);
+        EditorManager manager = EditorManager.getInstance();
+        Directory targetDir = manager.findDirectory(request.getParentFolder());
+
+        if (targetDir != null) {
+            targetDir.add(newDoc);
+        } else {
+            manager.getRootDirectory().add(newDoc);
+        }
+
+        manager.setCurrentDocument(newDoc);
+
+        String location = (targetDir != null) ? targetDir.getName() : "Root";
         
-        return ResponseEntity.ok("Created new " + request.getType() + " file: " + newDoc.getFileName());
+        return ResponseEntity.ok("Created " + newDoc.getFileName() + " in " + location);
     }
 
     @PostMapping("/save")
