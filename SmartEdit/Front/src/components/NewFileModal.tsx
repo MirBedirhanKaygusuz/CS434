@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-
-type FileType = 'txt' | 'md' | 'html'
+import type { FileFormat } from '../services/fileApi'
 
 interface NewFileModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (payload: { fileName: string; type: FileType }) => Promise<void>
+  onSubmit: (payload: { fileName: string; type: FileFormat; parentFolder: string | null }) => Promise<void>
+  currentFolderId?: string | null
 }
 
-const fileTypes: { label: string; value: FileType; description: string }[] = [
+const fileTypes: { label: string; value: FileFormat; description: string }[] = [
   { label: 'TXT', value: 'txt', description: 'Düz metin' },
   { label: 'Markdown', value: 'md', description: 'Markdown başlangıç şablonu' },
   { label: 'HTML', value: 'html', description: 'Basit HTML iskeleti' },
 ]
 
-export default function NewFileModal({ isOpen, onClose, onSubmit }: NewFileModalProps) {
+export default function NewFileModal({ isOpen, onClose, onSubmit, currentFolderId = null }: NewFileModalProps) {
   const [fileName, setFileName] = useState('YeniNot')
-  const [type, setType] = useState<FileType>('txt')
+  const [type, setType] = useState<FileFormat>('txt')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -41,7 +41,7 @@ export default function NewFileModal({ isOpen, onClose, onSubmit }: NewFileModal
     setIsSubmitting(true)
     setError('')
     try {
-      await onSubmit({ fileName: fileName.trim(), type })
+      await onSubmit({ fileName: fileName.trim(), type, parentFolder: currentFolderId })
     } catch (submitError) {
       setError((submitError as Error).message)
     } finally {

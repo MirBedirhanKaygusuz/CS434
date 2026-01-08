@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import FolderSidebar from './FolderSidebar'
 import NotesList from './NotesList'
-import EditorPanel from './EditorPanel'
+import EditorPanel, { type EditorPanelRef } from './EditorPanel'
 import AppleNotesToolbar from './AppleNotesToolbar'
 import StatusBar from './StatusBar'
 import SaveModal from './SaveModal'
 import SnapshotModal from './SnapshotModal'
 import NewFileModal from './NewFileModal'
+import CreateFolderModal from './CreateFolderModal'
 import {
   applyFormat,
   fetchEditorState,
@@ -17,6 +18,7 @@ import {
 } from '../services/editorApi'
 import { saveFile, createNewFile } from '../services/fileApi'
 import { createSnapshot, restoreSnapshot } from '../services/snapshotApi'
+import { createDirectory } from '../services/directoryApi'
 import type { EditorResponse, SelectionRange, TextFormat } from '../types/editor'
 
 interface InlineMessage {
@@ -27,6 +29,7 @@ interface InlineMessage {
 const DEFAULT_FILE_NAME = 'Untitled'
 
 export default function AppLayout() {
+  const editorPanelRef = useRef<EditorPanelRef>(null)
   const [content, setContent] = useState('')
   const [wordCount, setWordCount] = useState(0)
   const [charCount, setCharCount] = useState(0)
@@ -38,34 +41,52 @@ export default function AppLayout() {
   const [showSave, setShowSave] = useState(false)
   const [showSnapshots, setShowSnapshots] = useState(false)
   const [showNewFile, setShowNewFile] = useState(false)
+  const [showCreateFolder, setShowCreateFolder] = useState(false)
   const [editorForceUpdate, setEditorForceUpdate] = useState(0) // Undo/Redo/Snapshot için
+  const [directoryRefreshTrigger, setDirectoryRefreshTrigger] = useState(0) // Directory yenileme için
 
   // Apple Notes specific states
-  const [selectedFolder, setSelectedFolder] = useState('all')
-  const [selectedNote, setSelectedNote] = useState<string | null>('note-1')
-  const [notes] = useState([
-    {
-      id: 'note-1',
-      title: 'Hoş Geldiniz',
-      preview: 'Apple Notes benzeri arayüzünüze hoş geldiniz. Buradan notlarınızı oluşturabilir ve düzenleyebilirsiniz.',
-      date: 'Bugün 14:30',
-      isPinned: true,
-    },
-    {
-      id: 'note-2',
-      title: 'Proje Notları',
-      preview: 'Yeni özellikler: Üç sütunlu hiyerarşi, klasör yönetimi, gelişmiş araç çubuğu...',
-      date: 'Dün',
-      isPinned: false,
-    },
-    {
-      id: 'note-3',
-      title: 'Yapılacaklar',
-      preview: 'Design Pattern implementasyonu, UI geliştirmeleri, test senaryoları...',
-      date: '2 gün önce',
-      isPinned: false,
-    },
-  ])
+  const [selectedFolder, setSelectedFolder] = useState<string | null>('') // Başlangıçta "Tüm Notlar" seçili
+  const [selectedNote, setSelectedNote] = useState<string | null>(null)
+
+  // nota tiklandiginda icerigini yukle
+  const handleNoteSelect = async (noteId: string) => {
+    console.log('Not secildi:', noteId)
+    setSelectedNote(noteId)
+    setFileName(noteId)
+
+    try {
+      const response = await fetch('http://localhost:8080/api/file/load', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: noteId })
+      })
+
+      if (!response.ok) {
+        throw new Error('Dosya yüklenemedi')
+      }
+
+      const data = await response.json()
+      const loadedContent = data.content || ''
+
+      console.log('Dosya yuklendi:', data.fileName)
+      console.log('Icerik uzunlugu:', loadedContent.length)
+
+      // icerigi guncelle
+      setContent(loadedContent)
+      setFileName(data.fileName)
+
+      // kelime ve karakter sayisini hesapla
+      const words = loadedContent.trim().split(/\s+/).filter(Boolean).length
+      setWordCount(words)
+      setCharCount(loadedContent.length)
+
+      setMessage({ type: 'success', text: `${noteId} yüklendi.` })
+    } catch (error) {
+      console.error('Not yüklenemedi:', error)
+      setMessage({ type: 'error', text: 'Not yüklenirken hata oluştu.' })
+    }
+  }
 
   const applyEditorResponse = useCallback((response: EditorResponse) => {
     const nextContent = response.content ?? ''
@@ -117,21 +138,50 @@ export default function AppLayout() {
     return () => window.clearInterval(autoSnapshotInterval)
   }, [content, isLoading])
 
+  // Otomatik dosya kaydetme - içerik değiştiğinde
+  useEffect(() => {
+    if (!selectedNote || !content.trim() || isLoading) {
+      return
+    }
+
+    // Debounce: 2 saniye bekle, ardından kaydet
+    const autoSaveTimer = window.setTimeout(async () => {
+      try {
+        // Dosya uzantısını çıkar
+        const fileNameWithoutExt = selectedNote.replace(/\.(txt|md|html)$/, '')
+        const extension = selectedNote.match(/\.(txt|md|html)$/)?.[1] as FileFormat || 'txt'
+
+        await saveFile({
+          fileName: fileNameWithoutExt,
+          format: extension,
+          content: content
+        })
+
+        console.log('Otomatik kaydedildi:', selectedNote)
+      } catch (error) {
+        console.error('Otomatik kaydetme hatası:', error)
+      }
+    }, 2000) // 2 saniye debounce
+
+    return () => window.clearTimeout(autoSaveTimer)
+  }, [content, selectedNote, isLoading])
+
   const handleSelectionChange = (range: SelectionRange) => {
     setSelection(range)
   }
 
   const handleSync = async (fullContent: string) => {
-    try {
-      const response = await syncContent(fullContent)
-      // SADECE word/char count'u güncelle, content'i DEĞİŞTİRME!
-      // Local content zaten doğru, backend'in eski response'u ile override etme
-      setWordCount(response.wordCount ?? 0)
-      setCharCount(response.charCount ?? fullContent.length)
-    } catch (error) {
-      console.error(error)
-      setMessage({ type: 'error', text: 'Senkronizasyon hatası.' })
-    }
+    // icerigi guncelle
+    setContent(fullContent)
+
+    // kelime sayisini hesapla
+    const words = fullContent.trim().split(/\s+/).filter(Boolean).length
+    setWordCount(words)
+
+    // karakter sayisini guncelle
+    setCharCount(fullContent.length)
+
+    console.log('Sync yapildi - Kelime:', words, 'Karakter:', fullContent.length)
   }
 
   const handleInsert = async () => {
@@ -154,27 +204,10 @@ export default function AppLayout() {
 
   const selectionLength = useMemo(() => Math.max(selection.end - selection.start, 0), [selection])
 
-  const handleFormat = async (format: TextFormat) => {
-    if (selectionLength === 0) {
-      setMessage({ type: 'error', text: 'Lütfen formatlamak için metin seçin.' })
-      return
-    }
-
-    const selectedText = content.substring(selection.start, selection.end)
-
-    try {
-      const response = await applyFormat({
-        selection: selectedText,
-        format,
-        start: selection.start,
-        end: selection.end,
-      })
-      applyEditorResponse(response)
-      setMessage({ type: 'success', text: 'Format uygulandı.' })
-    } catch (error) {
-      console.error(error)
-      setMessage({ type: 'error', text: (error as Error).message })
-    }
+  const handleFormat = (format: TextFormat) => {
+    // formatlama yap
+    console.log('Format uygulanıyor:', format)
+    editorPanelRef.current?.applyFormat(format)
   }
 
   const handleUndo = async () => {
@@ -235,25 +268,67 @@ export default function AppLayout() {
     }
   }
 
-  const handleCreateFile = async (payload: { fileName: string; type: 'txt' | 'md' | 'html' }) => {
+  const handleCreateFile = async (payload: { fileName: string; type: 'txt' | 'md' | 'html'; parentFolder: string | null }) => {
     try {
       const serverMessage = await createNewFile(payload)
+      const fullFileName = `${payload.fileName}.${payload.type}`
       setMessage({ type: 'success', text: serverMessage || 'Yeni dosya oluşturuldu.' })
-      setFileName(`${payload.fileName}.${payload.type}`)
+      setFileName(fullFileName)
+      setSelectedNote(fullFileName) // Yeni notu seçili yap
       setShowNewFile(false)
-      await loadEditor()
+
+      // Yeni dosyayı hemen diske kaydet (boş içerikle) - böylece backend restart ettiğinde kaybolmaz
+      try {
+        await saveFile({
+          fileName: payload.fileName,
+          format: payload.type,
+          content: '' // Boş içerikle kaydet
+        })
+        console.log('Yeni dosya storage klasörüne kaydedildi:', fullFileName)
+      } catch (saveError) {
+        console.error('Dosya diske kaydedilemedi:', saveError)
+      }
+
+      // Yeni dosyayı editöre yükle (boş içerikle)
+      setContent('')
+      setWordCount(0)
+      setCharCount(0)
+
+      // Refresh directory tree to show new file
+      setDirectoryRefreshTrigger(Date.now())
     } catch (error) {
       console.error(error)
       setMessage({ type: 'error', text: (error as Error).message })
     }
   }
 
-  const handleToolbarAction = (action: 'checklist' | 'table' | 'photo' | 'drawing') => {
-    setMessage({ type: 'success', text: `${action} özelliği yakında eklenecek.` })
+  const handleCreateFolder = async (folderName: string, parentId: string | null) => {
+    try {
+      await createDirectory({ name: folderName, parentId })
+      setMessage({ type: 'success', text: 'Klasör oluşturuldu.' })
+      setShowCreateFolder(false)
+      // Refresh directory tree to show new folder
+      setDirectoryRefreshTrigger(Date.now())
+    } catch (error) {
+      console.error(error)
+      setMessage({ type: 'error', text: (error as Error).message })
+    }
   }
 
   const handleShare = () => {
     setShowSave(true)
+  }
+
+  const handleDeleteNote = (fileName: string) => {
+    // If the deleted note was selected, clear selection
+    if (selectedNote === fileName) {
+      setSelectedNote(null)
+      setFileName(DEFAULT_FILE_NAME)
+      setContent('')
+    }
+    // Refresh directory to update the list
+    setDirectoryRefreshTrigger(Date.now())
+    setMessage({ type: 'success', text: 'Not silindi.' })
   }
 
   return (
@@ -265,18 +340,25 @@ export default function AppLayout() {
       )}
 
       <div className="apple-notes-container">
-        <FolderSidebar selectedFolderId={selectedFolder} onFolderSelect={setSelectedFolder} />
+        <FolderSidebar
+          selectedFolderId={selectedFolder || ''}
+          onFolderSelect={setSelectedFolder}
+          onCreateFolder={() => setShowCreateFolder(true)}
+          refreshTrigger={directoryRefreshTrigger}
+        />
 
         <NotesList
-          notes={notes}
           selectedNoteId={selectedNote}
-          onNoteSelect={setSelectedNote}
+          onNoteSelect={handleNoteSelect}
           onNewNote={() => setShowNewFile(true)}
+          selectedFolderId={selectedFolder}
+          refreshTrigger={directoryRefreshTrigger}
+          onDelete={handleDeleteNote}
         />
 
         <div className="editor-container">
           <div className="editor-header">
-            <h1 className="editor-title">{notes.find((n) => n.id === selectedNote)?.title || 'Başlıksız Not'}</h1>
+            <h1 className="editor-title">{selectedNote || fileName || 'Başlıksız Not'}</h1>
             <div className="editor-meta-info">
               <span>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
             </div>
@@ -284,7 +366,6 @@ export default function AppLayout() {
 
           <AppleNotesToolbar
             onFormat={handleFormat}
-            onAction={handleToolbarAction}
             onShare={handleShare}
             onUndo={handleUndo}
             onRedo={handleRedo}
@@ -293,6 +374,7 @@ export default function AppLayout() {
           />
 
           <EditorPanel
+            ref={editorPanelRef}
             content={content}
             loading={isLoading}
             onSelectionChange={handleSelectionChange}
@@ -322,7 +404,16 @@ export default function AppLayout() {
         isOpen={showNewFile}
         onClose={() => setShowNewFile(false)}
         onSubmit={handleCreateFile}
+        currentFolderId={selectedFolder}
       />
+
+      {showCreateFolder && (
+        <CreateFolderModal
+          onClose={() => setShowCreateFolder(false)}
+          onSubmit={handleCreateFolder}
+          parentFolderId={selectedFolder}
+        />
+      )}
     </div>
   )
 }

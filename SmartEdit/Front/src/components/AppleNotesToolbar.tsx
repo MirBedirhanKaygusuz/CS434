@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
+import ThemeManager, { type Theme } from '../services/ThemeManager'
+
 interface AppleNotesToolbarProps {
   onFormat: (format: 'bold' | 'italic' | 'underline') => void
-  onAction: (action: 'checklist' | 'table' | 'photo' | 'drawing') => void
   onShare: () => void
   onUndo: () => void
   onRedo: () => void
@@ -8,7 +10,22 @@ interface AppleNotesToolbarProps {
   onOpenSnapshots: () => void
 }
 
-export default function AppleNotesToolbar({ onFormat, onAction, onShare, onUndo, onRedo, onSnapshot, onOpenSnapshots }: AppleNotesToolbarProps) {
+export default function AppleNotesToolbar({ onFormat, onShare, onUndo, onRedo, onSnapshot, onOpenSnapshots }: AppleNotesToolbarProps) {
+  // Use ThemeManager Singleton
+  const [theme, setTheme] = useState<Theme>(() => ThemeManager.getInstance().getTheme())
+
+  useEffect(() => {
+    // Subscribe to theme changes
+    const themeManager = ThemeManager.getInstance()
+    const unsubscribe = themeManager.subscribe(setTheme)
+
+    return unsubscribe
+  }, [])
+
+  const handleToggleTheme = () => {
+    // Use Singleton getInstance() to toggle theme
+    ThemeManager.getInstance().toggleTheme()
+  }
   return (
     <div className="apple-toolbar">
       <div className="apple-toolbar-group">
@@ -36,44 +53,6 @@ export default function AppleNotesToolbar({ onFormat, onAction, onShare, onUndo,
               stroke="currentColor"
               strokeWidth="1.5"
               strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      </div>
-
-      <div className="apple-toolbar-divider" />
-
-      <div className="apple-toolbar-group">
-        <button className="apple-toolbar-btn" onClick={() => onAction('checklist')} title="Kontrol Listesi">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="5" cy="5" r="2" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx="5" cy="13" r="2" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M10 5h6M10 13h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
-
-        <button className="apple-toolbar-btn" onClick={() => onAction('table')} title="Tablo">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect x="3" y="3" width="12" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M3 9h12M9 3v12" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-        </button>
-
-        <button className="apple-toolbar-btn" onClick={() => onAction('photo')} title="Fotoğraf">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx="6.5" cy="7.5" r="1.5" fill="currentColor" />
-            <path d="M16 11l-3.5-3.5-3 3-2-2L2 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
-
-        <button className="apple-toolbar-btn" onClick={() => onAction('drawing')} title="Çizim">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path
-              d="M13.5 2.5l2 2-9 9-3 1 1-3 9-9z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
             />
           </svg>
         </button>
@@ -122,6 +101,33 @@ export default function AppleNotesToolbar({ onFormat, onAction, onShare, onUndo,
             <rect x="3" y="3" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
             <path d="M7 7h4M7 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
+        </button>
+      </div>
+
+      <div className="apple-toolbar-divider" />
+
+      <div className="apple-toolbar-group">
+        <button className="apple-toolbar-btn" onClick={handleToggleTheme} title={theme === 'light' ? 'Dark Mode' : 'Light Mode'}>
+          {theme === 'light' ? (
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path
+                d="M9 1v2M9 15v2M16 9h-2M4 9H2M14.5 3.5l-1.4 1.4M4.9 13.1l-1.4 1.4M14.5 14.5l-1.4-1.4M4.9 4.9L3.5 3.5M12 9a3 3 0 11-6 0 3 3 0 016 0z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path
+                d="M15 10a6 6 0 11-9-5.2A5 5 0 009 15z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </button>
       </div>
 

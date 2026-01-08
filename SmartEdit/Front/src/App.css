@@ -7,7 +7,7 @@
   --apple-yellow-hover: #ffd633;
   --apple-yellow-light: rgba(255, 204, 0, 0.1);
 
-  /* Neutral Colors */
+  /* Neutral Colors - Light Theme */
   --white: #ffffff;
   --paper-white: #fefdfb;
   --gray-50: #f9f9f9;
@@ -33,6 +33,43 @@
   --success-text: #1e7e34;
   --error-bg: #f8d7da;
   --error-text: #721c24;
+}
+
+/* ==========================================
+   DARK THEME
+   ========================================== */
+[data-theme='dark'] {
+  /* Apple Notes Yellow (same) */
+  --apple-yellow: #ffcc00;
+  --apple-yellow-hover: #ffd633;
+  --apple-yellow-light: rgba(255, 204, 0, 0.15);
+
+  /* Dark Theme Colors */
+  --white: #1c1c1e;
+  --paper-white: #1c1c1e;
+  --gray-50: #2c2c2e;
+  --gray-100: #2c2c2e;
+  --gray-200: #3a3a3c;
+  --gray-300: #48484a;
+  --gray-400: #636366;
+  --gray-500: #8e8e93;
+  --gray-600: #aeaeb2;
+  --gray-700: #c7c7cc;
+  --gray-800: #d1d1d6;
+  --gray-900: #f2f2f7;
+
+  /* Dark Mode Borders & Shadows */
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.15);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+
+  /* Success/Error - Dark */
+  --success-bg: #1a4d2e;
+  --success-text: #5ad67d;
+  --error-bg: #4d1a1a;
+  --error-text: #ff6b6b;
 }
 
 /* ==========================================
@@ -120,11 +157,12 @@ button {
 .folder-sidebar {
   background-color: var(--gray-100);
   border-right: 1px solid var(--border-light);
-  padding: 16px 8px;
+  padding: 16px 8px 0 8px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  height: 100vh;
 }
 
 .folder-header {
@@ -158,6 +196,30 @@ button {
 .icon-button:hover {
   background-color: var(--gray-200);
   color: var(--gray-900);
+}
+
+.folder-loading {
+  padding: 20px 12px;
+  text-align: center;
+  color: var(--gray-600);
+  font-size: 14px;
+}
+
+.folder-empty {
+  padding: 20px 12px;
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.folder-empty-hint {
+  padding: 8px 12px;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 12px;
+  line-height: 1.4;
+  font-style: italic;
 }
 
 .folder-section {
@@ -280,13 +342,12 @@ button {
 
 .note-item {
   width: 100%;
-  padding: 14px 16px;
-  border: none;
+  position: relative;
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--border-light);
   background: transparent;
-  text-align: left;
   transition: background-color 0.15s;
-  cursor: pointer;
 }
 
 .note-item:hover {
@@ -296,6 +357,36 @@ button {
 .note-item.active {
   background-color: var(--apple-yellow-light);
   border-left: 3px solid var(--apple-yellow);
+}
+
+.note-item-content {
+  flex: 1;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.note-delete-button {
+  padding: 8px;
+  margin-right: 8px;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note-item:hover .note-delete-button {
+  opacity: 1;
+}
+
+.note-delete-button:hover {
+  color: var(--error-text);
 }
 
 .note-item-header {
@@ -474,6 +565,61 @@ button {
 .apple-editor-textarea::selection {
   background-color: var(--apple-yellow);
   color: var(--gray-900);
+}
+
+/* ContentEditable Editor */
+.apple-editor-contenteditable {
+  width: 100%;
+  min-height: 600px;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 32px;
+  color: var(--gray-900);
+  outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  letter-spacing: -0.01em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.apple-editor-contenteditable:focus {
+  outline: none;
+  caret-color: var(--apple-yellow);
+}
+
+.apple-editor-contenteditable::selection {
+  background-color: var(--apple-yellow);
+  color: var(--gray-900);
+}
+
+/* Placeholder for contenteditable */
+.apple-editor-contenteditable:empty:before {
+  content: attr(data-placeholder);
+  color: var(--gray-400);
+  pointer-events: none;
+}
+
+/* Formatlama stilleri */
+.apple-editor-contenteditable b,
+.apple-editor-contenteditable strong {
+  font-weight: 600;
+}
+
+.apple-editor-contenteditable i,
+.apple-editor-contenteditable em {
+  font-style: italic;
+}
+
+.apple-editor-contenteditable u {
+  text-decoration: underline;
+}
+
+.apple-editor-loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 16px;
 }
 
 /* ==========================================

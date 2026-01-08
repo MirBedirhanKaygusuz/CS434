@@ -1,5 +1,8 @@
 package com.smartedit.backend.controller;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -111,11 +114,34 @@ public class FileController {
     @DeleteMapping("/delete/{fileName}")
     public ResponseEntity<String> deleteFile(@PathVariable String fileName) {
         boolean deleted = EditorManager.getInstance().deleteFile(fileName);
-        
+
         if (deleted) {
             return ResponseEntity.ok("File deleted successfully: " + fileName);
         } else {
             return ResponseEntity.status(404).body("File not found or could not be deleted");
         }
+    }
+
+    @PostMapping("/load")
+    public ResponseEntity<?> loadFile(@RequestBody Map<String, String> payload) {
+        String fileName = payload.get("fileName");
+
+        EditorManager manager = EditorManager.getInstance();
+
+        // Bellekteki dosyayı bul
+        for (FileSystemItem item : manager.getRootDirectory().getChildren()) {
+            if (item.getName().equals(fileName) && item instanceof Document) {
+                Document doc = (Document) item;
+                manager.setCurrentDocument(doc);
+
+                Map<String, String> response = new HashMap<>();
+                response.put("fileName", doc.getFileName());
+                response.put("content", doc.getContent());
+
+                return ResponseEntity.ok(response);
+            }
+        }
+
+        return ResponseEntity.status(404).body("File not found: " + fileName);
     }
 }
